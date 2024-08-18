@@ -2,16 +2,21 @@ import time
 import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.options import Options
+from webdriver_manager.firefox import GeckoDriverManager
 from dotenv import load_dotenv
 import os
 
 # Load environment variables from .env file
 load_dotenv()
 
+# Fetch the API key from the environment variables
 API_KEY = os.getenv('API_KEY')
+
+# Check if the API key is loaded
+if not API_KEY:
+    raise ValueError("API Key is not set in .env file.")
 
 CREATE_TASK_URL = 'https://api.2captcha.com/createTask'
 GET_RESULT_URL = 'https://api.2captcha.com/getTaskResult'
@@ -64,15 +69,17 @@ def solve_captcha(website_key, website_url, retries=3):
     
     raise Exception("Failed to solve CAPTCHA after multiple attempts.")
 
-chrome_options = Options()
-chrome_options.add_argument("--disable-extensions")
-chrome_options.add_argument("--disable-popup-blocking")
-chrome_options.add_argument("--headless")  
-chrome_options.add_argument("--no-sandbox")  
-chrome_options.add_argument("--disable-dev-shm-usage")  
+# Use Firefox Developer Edition
+firefox_options = Options()
+firefox_options.binary_location = "/Applications/Firefox Developer Edition.app/Contents/MacOS/firefox"  # Ensure this is the correct path
+firefox_options.add_argument("--disable-extensions")
+firefox_options.add_argument("--disable-popup-blocking")
+firefox_options.add_argument("--headless")  
+firefox_options.add_argument("--no-sandbox")  
+firefox_options.add_argument("--disable-dev-shm-usage")  
 
-service = Service(ChromeDriverManager().install())
-driver = webdriver.Chrome(service=service, options=chrome_options)
+service = Service(GeckoDriverManager().install())
+driver = webdriver.Firefox(service=service, options=firefox_options)
 driver.get('https://emkei.cz/')
 
 # Get site key
