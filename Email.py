@@ -1,3 +1,4 @@
+import subprocess
 import time
 import requests
 from selenium import webdriver
@@ -7,6 +8,7 @@ from selenium.webdriver.firefox.options import Options
 from webdriver_manager.firefox import GeckoDriverManager
 from dotenv import load_dotenv
 import os
+from fake_useragent import UserAgent
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,6 +22,22 @@ if not API_KEY:
 
 CREATE_TASK_URL = 'https://api.2captcha.com/createTask'
 GET_RESULT_URL = 'https://api.2captcha.com/getTaskResult'
+
+def check_and_start_tor():
+    """Check if Tor service is running, and start it if not."""
+    try:
+        result = subprocess.run(['brew', 'services', 'list'], capture_output=True, text=True)
+        if 'tor' in result.stdout and 'started' in result.stdout:
+            print("Tor service is already running.")
+        else:
+            print("Starting Tor service...")
+            subprocess.run(['brew', 'services', 'start', 'tor'])
+            time.sleep(5)  # Wait a few seconds for Tor to start
+    except Exception as e:
+        print(f"Error checking or starting Tor service: {e}")
+        exit(1)
+
+check_and_start_tor()
 
 def solve_captcha(website_key, website_url, retries=3):
     for attempt in range(retries):
@@ -69,17 +87,29 @@ def solve_captcha(website_key, website_url, retries=3):
     
     raise Exception("Failed to solve CAPTCHA after multiple attempts.")
 
-# Use Firefox Developer Edition
+# Set up Firefox options to use Tor's SOCKS proxy
 firefox_options = Options()
-firefox_options.binary_location = "/Applications/Firefox Developer Edition.app/Contents/MacOS/firefox"  # Ensure this is the correct path
-firefox_options.add_argument("--disable-extensions")
-firefox_options.add_argument("--disable-popup-blocking")
-firefox_options.add_argument("--headless")  
-firefox_options.add_argument("--no-sandbox")  
-firefox_options.add_argument("--disable-dev-shm-usage")  
+firefox_options.binary_location = "/Applications/Tor Browser.app/Contents/MacOS/firefox"  # Path to Firefox binary for Tor
 
+# Set up Firefox proxy to use Tor
+firefox_options.set_preference("network.proxy.type", 1)  # Manual proxy configuration
+firefox_options.set_preference("network.proxy.socks", "127.0.0.1")
+firefox_options.set_preference("network.proxy.socks_port", 9050)
+firefox_options.set_preference("network.proxy.socks_version", 5)
+firefox_options.set_preference("network.proxy.socks_remote_dns", True)
+
+# Add User-Agent spoofing
+ua = UserAgent()
+firefox_options.set_preference("general.useragent.override", ua.random)
+
+# Run in headless mode
+firefox_options.add_argument("--headless")
+
+# Start the WebDriver with updated options
 service = Service(GeckoDriverManager().install())
 driver = webdriver.Firefox(service=service, options=firefox_options)
+
+# Your main script logic
 driver.get('https://emkei.cz/')
 
 # Get site key
